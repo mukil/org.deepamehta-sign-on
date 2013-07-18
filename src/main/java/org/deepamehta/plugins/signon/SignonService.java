@@ -33,81 +33,81 @@ public class SignonService extends WebActivatorPlugin {
 
     private static Logger log = Logger.getLogger(SignonService.class.getName());
 
-	/** see also @de.deepamehta.plugins.accesscontrol.model.Credentials */
-	private static final String ENCRYPTED_PASSWORD_PREFIX = "-SHA256-";
+    /** see also @de.deepamehta.plugins.accesscontrol.model.Credentials */
+    private static final String ENCRYPTED_PASSWORD_PREFIX = "-SHA256-";
 
     private static String USERNAME_TYPE_URI = "dm4.accesscontrol.username";
     private static String USER_ACCOUNT_TYPE_URI = "dm4.accesscontrol.user_account";
     private static String USER_PASSWORD_TYPE_URI = "dm4.accesscontrol.password";
 
-	private static String PERSON_TYPE_URI = "dm4.contacts.person";
-	private static String PERSON_NAME_TYPE_URI = "dm4.contacts.person_name";
+    private static String PERSON_TYPE_URI = "dm4.contacts.person";
+    private static String PERSON_NAME_TYPE_URI = "dm4.contacts.person_name";
     private static String MAILBOX_TYPE_URI = "dm4.contacts.email_address";
     private static String FIRSTNAME_TYPE_URI = "dm4.contacts.first_name";
     private static String LASTNAME_TYPE_URI = "dm4.contacts.last_name";
 
     private static String OPENID_CLAIMED_TYPE_URI = "org.deepamehta.openid.claimed_id";
 
-	private static final long ONE_HOUR = 3600000;
-	private static final long TWO_HOURS = 7200000;
+    private static final long ONE_HOUR = 3600000;
+    private static final long TWO_HOURS = 7200000;
 
-	private OpenIdManager manager;
+    private OpenIdManager manager;
 
     public void init() {
         setupRenderContext();
 		//
-		manager = new OpenIdManager();
+        manager = new OpenIdManager();
         manager.setRealm("http://localhost:8080"); // change to your domain
         manager.setReturnTo("http://localhost:8080/sign-on/openid/response"); // change to your servlet url
     }
 
-	@GET
-	@Path("/openid/google")
-	public String performGoogleAuthentication() {
+    @GET
+    @Path("/openid/google")
+    public String performGoogleAuthentication() {
 
-		// imediatley checks/ requests https://www.google.com/accounts/o8/id to _receive_ an endpointURI
-		// redirect to Google sign on page:
-		Endpoint endpoint = manager.lookupEndpoint("Google");
-		// fixme: set requested attributes more nicely:
-		// * (needed) E-Mail-Adresse
-		// * (to be removed) General User Account Information
-		Association association = manager.lookupAssociation(endpoint);
-		association.setMaxAge(TWO_HOURS); // after 2hrs a password prompt appears again
-		String url = manager.getAuthenticationUrl(endpoint, association);
-		URI location;
-		try {
-			location = new java.net.URI(url);
-			throw new WebApplicationException(Response.seeOther(location).build());
-		} catch (URISyntaxException ex) {
-			Logger.getLogger(SignonService.class.getName()).log(Level.SEVERE, null, ex);
-		}
-		return "";
+        // imediatley checks/ requests https://www.google.com/accounts/o8/id to _receive_ an endpointURI
+        // redirect to Google sign on page:
+        Endpoint endpoint = manager.lookupEndpoint("Google");
+        // fixme: set requested attributes more nicely:
+        // * (needed) E-Mail-Adresse
+        // * (to be removed) General User Account Information
+        Association association = manager.lookupAssociation(endpoint);
+        association.setMaxAge(TWO_HOURS); // after 2hrs a password prompt appears again
+        String url = manager.getAuthenticationUrl(endpoint, association);
+        URI location;
+        try {
+            location = new java.net.URI(url);
+            throw new WebApplicationException(Response.seeOther(location).build());
+        } catch (URISyntaxException ex) {
+            Logger.getLogger(SignonService.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return "";
 
-	}
+    }
 
     @GET
-	@Path("/openid/yahoo")
-	public String performYahooAuthentication() {
+    @Path("/openid/yahoo")
+    public String performYahooAuthentication() {
 
-		// imediatley checks/ requests https://www.google.com/accounts/o8/id to _receive_ an endpointURI
-		// redirect to Google sign on page:
-		Endpoint endpoint = manager.lookupEndpoint("Yahoo");
-		// fixme: set requested attributes more nicely:
-		// * (needed) E-Mail-Adresse
-		// * (to be removed) General User Account Information
-		Association association = manager.lookupAssociation(endpoint);
-		association.setMaxAge(TWO_HOURS); // after 2hrs a password prompt appears again
-		String url = manager.getAuthenticationUrl(endpoint, association);
-		URI location;
-		try {
-			location = new java.net.URI(url);
-			throw new WebApplicationException(Response.seeOther(location).build());
-		} catch (URISyntaxException ex) {
-			Logger.getLogger(SignonService.class.getName()).log(Level.SEVERE, null, ex);
-		}
-		return "";
+        // imediatley checks/ requests https://www.google.com/accounts/o8/id to _receive_ an endpointURI
+        // redirect to Google sign on page:
+        Endpoint endpoint = manager.lookupEndpoint("Yahoo");
+        // fixme: set requested attributes more nicely:
+        // * (needed) E-Mail-Adresse
+        // * (to be removed) General User Account Information
+        Association association = manager.lookupAssociation(endpoint);
+        association.setMaxAge(TWO_HOURS); // after 2hrs a password prompt appears again
+        String url = manager.getAuthenticationUrl(endpoint, association);
+        URI location;
+        try {
+            location = new java.net.URI(url);
+            throw new WebApplicationException(Response.seeOther(location).build());
+        } catch (URISyntaxException ex) {
+            Logger.getLogger(SignonService.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return "";
 
-	}
+    }
 
     @GET
     @Path("/openid/response")
@@ -119,13 +119,13 @@ public class SignonService extends WebActivatorPlugin {
             @QueryParam("openid.ext1.value.email") String emailGoogle,
             @QueryParam("openid.ax.value.fullname") String fullNameYahoo,
             @QueryParam("openid.ax.value.email") String emailYahoo,
-			@QueryParam("openid.claimed_id") String openId,
+            @QueryParam("openid.claimed_id") String openId,
             @HeaderParam("Cookie") ClientState clientState,
             @Context HttpHeaders headers) {
 
-		// fixme: what exactly happens if authentication fails? it just never reaches us, i guess.
-		// fixme: find out how we can check if the request has the right origin?
-		//		  or in other words: how can we prevent people just constructing a valid request? it might be possible.
+        // fixme: what exactly happens if authentication fails? it just never reaches us, i guess.
+        // fixme: find out how we can check if the request has the right origin?
+        //		  or in other words: how can we prevent people just constructing a valid request? it might be possible.
         /** MultivaluedMap<String, String> responseHeaders = headers.getRequestHeaders();
         Set<String> keys = responseHeaders.keySet();
         for (String key : keys) {
@@ -187,9 +187,9 @@ public class SignonService extends WebActivatorPlugin {
         }
     }
 
-	/** --- private helpers --- */
+    /** --- private helpers --- */
 
-	private void checkNonce(String nonce) {
+    private void checkNonce(String nonce) {
         // check response_nonce to prevent replay-attack:
         if ( nonce == null || nonce.length() < 20 ) throw new OpenIdException("Verifying openid.response_nonce failed.");
         long nonceTime = getNonceTime(nonce);
@@ -198,9 +198,9 @@ public class SignonService extends WebActivatorPlugin {
         if ( diff > ONE_HOUR ) throw new OpenIdException("Bad nonce time.");
         if ( isNonceExist(nonce) ) throw new OpenIdException("Verifiying openid.response_nonce failed.");
         storeNonce(nonce, nonceTime + TWO_HOURS);
-	}
+    }
 
-	private boolean isNonceExist(String nonce) {
+    private boolean isNonceExist(String nonce) {
         // TODO: check if nonce is exist in database:
         return false;
     }
@@ -217,61 +217,61 @@ public class SignonService extends WebActivatorPlugin {
         }
     }
 
-	private RelatedTopic getUserAccountByOpenId(String openId) {
-		Topic openIdTopic = dms.getTopic(OPENID_CLAIMED_TYPE_URI, new SimpleValue(openId), true, null);
-		if (openIdTopic != null) {
-			return openIdTopic.getRelatedTopic("dm4.core.composition", "dm4.core.child", "dm4.core.parent",
-				"dm4.accesscontrol.user_account", true, false, null);
-		} else {
-			return null;
-		}
-	}
+    private RelatedTopic getUserAccountByOpenId(String openId) {
+        Topic openIdTopic = dms.getTopic(OPENID_CLAIMED_TYPE_URI, new SimpleValue(openId), true, null);
+        if (openIdTopic != null) {
+            return openIdTopic.getRelatedTopic("dm4.core.composition", "dm4.core.child", "dm4.core.parent",
+                "dm4.accesscontrol.user_account", true, false, null);
+        } else {
+            return null;
+        }
+    }
 
-	private Topic createUserAccountByOpenId(String openId, String username, String email, String firstName,
-			String lastName, ClientState clientState) {
-		if (!isUsernameAvailable(username, clientState)) throw new WebApplicationException(412);
-		// fixme: user account needs to be able to edit himself
-		CompositeValueModel userAccount = new CompositeValueModel()
-				.put(USERNAME_TYPE_URI, username)
-				.put(USER_PASSWORD_TYPE_URI, encryptPassword(""))
-				.put(OPENID_CLAIMED_TYPE_URI, openId);
-		CompositeValueModel personData =  new CompositeValueModel()
-				.add(MAILBOX_TYPE_URI, new TopicModel(MAILBOX_TYPE_URI, new SimpleValue(email)));
-		// fixme: using .put() results the folllowing RuntimeException (can not be true) is in this case a bad message:
-		// "Invalid access to CompositeValueModel entry "dm4.contacts.email_address":
-		// the caller assumes it to be multiple-value but it is single-value in" because it's actually multi-valued.
-		CompositeValueModel nameData =  new CompositeValueModel()
-				.put(FIRSTNAME_TYPE_URI, firstName)
-				.put(LASTNAME_TYPE_URI, lastName);
-		personData.put(PERSON_NAME_TYPE_URI, nameData);
-		userAccount.put(PERSON_TYPE_URI, personData);
-		// fixme: set user account to "Blocked" until verified
-		// fixme: user has no password, normal login needs to be blocked!
-		TopicModel userModel = new TopicModel(USER_ACCOUNT_TYPE_URI, userAccount);
-		Topic user = dms.createTopic(userModel, clientState);
-		return user;
-	}
+    private Topic createUserAccountByOpenId(String openId, String username, String email, String firstName,
+            String lastName, ClientState clientState) {
+        if (!isUsernameAvailable(username, clientState)) throw new WebApplicationException(412);
+        // fixme: user account needs to be able to edit himself
+        CompositeValueModel userAccount = new CompositeValueModel()
+                .put(USERNAME_TYPE_URI, username)
+                .put(USER_PASSWORD_TYPE_URI, encryptPassword(""))
+                .put(OPENID_CLAIMED_TYPE_URI, openId);
+        CompositeValueModel personData =  new CompositeValueModel()
+                .add(MAILBOX_TYPE_URI, new TopicModel(MAILBOX_TYPE_URI, new SimpleValue(email)));
+        // fixme: using .put() results the folllowing RuntimeException (can not be true) is in this case a bad message:
+        // "Invalid access to CompositeValueModel entry "dm4.contacts.email_address":
+        // the caller assumes it to be multiple-value but it is single-value in" because it's actually multi-valued.
+        CompositeValueModel nameData =  new CompositeValueModel()
+                .put(FIRSTNAME_TYPE_URI, firstName)
+                .put(LASTNAME_TYPE_URI, lastName);
+        personData.put(PERSON_NAME_TYPE_URI, nameData);
+        userAccount.put(PERSON_TYPE_URI, personData);
+        // fixme: set user account to "Blocked" until verified
+        // fixme: user has no password, normal login needs to be blocked!
+        TopicModel userModel = new TopicModel(USER_ACCOUNT_TYPE_URI, userAccount);
+        Topic user = dms.createTopic(userModel, clientState);
+        return user;
+    }
 
-	private boolean isUsernameAvailable(String username, ClientState clientState) {
-		// fixme: framework should also allow us to query case insensitve for a username
-		Topic userName = dms.getTopic(USERNAME_TYPE_URI, new SimpleValue(username), true, clientState);
-		return (userName == null) ? true : false;
-	}
+    private boolean isUsernameAvailable(String username, ClientState clientState) {
+        // fixme: framework should also allow us to query case insensitve for a username
+        Topic userName = dms.getTopic(USERNAME_TYPE_URI, new SimpleValue(username), true, clientState);
+        return (userName == null) ? true : false;
+    }
 
-	private String encryptPassword(String password) {
+    private String encryptPassword(String password) {
         return ENCRYPTED_PASSWORD_PREFIX + JavaUtils.encodeSHA256(password);
     }
 
-	/** --- routes --- */
+    /** --- routes --- */
 
-	@GET
+    @GET
     @Path("/")
     @Produces("text/html")
     public Viewable getSignOnView(@HeaderParam("Cookie") ClientState clientState) {
-		// fixme: use acl service to check if a session already exists and if so, redirect to dm-webclient directly
+        // fixme: use acl service to check if a session already exists and if so, redirect to dm-webclient directly
         return view("index");
     }
-	@GET
+    @GET
     @Path("/received")
     @Produces("text/html")
     public Viewable getSignedOnView(@HeaderParam("Cookie") ClientState clientState) {
