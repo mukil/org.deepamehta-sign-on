@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+    <head>
+        <title>DeepaMehta Account Created</title>
+		<link rel="stylesheet" href="/org.deepamehta.sign-on/style/style.css" type="text/css" />
+    </head>
+
+    <body class="receipt-page">
+		<div id="receipt-view">
+            <h2 th:text="${title}">DeepaMehta Account Created</h2>
+			<p>
+				<b th:text="${message}">We received your request and successfully created a new user account for you.</b>
+			</p>
+			<p>
+				You can now <a href="/de.deepamehta.webclient">start using</a> DeepaMehta.
+			</p>
+		</div>
+    </body>
+
+	<noscript>
+		Without JavaScript we cannot interactively check if your desired username is not already taken and
+		we cannot check in advance if your chosen password meets our minimum requirements for passwords (min. 9 signs).
+		Your account creation may thus just fail. Thanks for your understanding.
+	</noscript>
+
+</html>
