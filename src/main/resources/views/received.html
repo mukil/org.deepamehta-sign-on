@@ -3,17 +3,20 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 
     <head>
-        <title>DeepaMehta Account Created</title>
+        <title>Signed on to DeepaMehta</title>
 		<link rel="stylesheet" href="/org.deepamehta.sign-on/style/style.css" type="text/css" />
     </head>
 
     <body class="receipt-page">
 		<div id="receipt-view">
-            <h2 th:text="${title}">DeepaMehta Account Created</h2>
+            <h2 th:text="${title}">Successfull request</h2>
 			<p>
-				<b th:text="${message}">We received your request and successfully created a new user account for you.</b>
+                We received your request and successfully created a new user account for you with the following details:
+                <span th:text="'Username: '+${username}">New Username</span>
+                <span th:text="'OpenID: '+${openid}">OpenID-URI</span>
 			</p>
 			<p>
+                Please protect your new account by logging in and setting a password immediately.<br/><br/>
 				You can now <a href="/de.deepamehta.webclient">start using</a> DeepaMehta.
 			</p>
 		</div>

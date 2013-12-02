@@ -20,7 +20,7 @@ public class Migration1 extends Migration {
     @Override
     public void run() {
 
-        TopicType account = dms.getTopicType(USER_ACCOUNT_TYPE_URI, null);
+        TopicType account = dms.getTopicType(USER_ACCOUNT_TYPE_URI);
 
 		// 1) Create "OpenId"-Type
 		TopicTypeModel openIdModel = new TopicTypeModel(OPENID_CLAIMED_TYPE_URI ,"OpenID", "dm4.core.text");
@@ -33,19 +33,19 @@ public class Migration1 extends Migration {
 		account.addAssocDef(new AssociationDefinitionModel("dm4.core.composition_def", USER_ACCOUNT_TYPE_URI,
                 OPENID_CLAIMED_TYPE_URI, "dm4.core.one", "dm4.core.one"));
 
-		// 3) UNTESTED/NEVER RUN: If not already done, enrich the "User Account"-Type about a "Person"-Type
-        Collection<AssociationDefinition> childTypes = account.getAssocDefs();
+		// 3) If not already done, enrich the "User Account"-Type about a "Person"-Type
+        /** Collection<AssociationDefinition> childTypes = account.getAssocDefs();
         boolean hasPersonAsChild = false;
         for (AssociationDefinition child : childTypes) {
             if (child.getChildTypeUri().equals(PERSON_TYPE_URI)) hasPersonAsChild = true;
         }
         if (!hasPersonAsChild) {
-            logger.info("Sign-on Module => Enriching \"User Account\"-Type about \"Person\"-Type");
+            logger.info("Sign-on Migration1 => Enriching \"User Account\"-Type about \"Person\"-Type");
             account.addAssocDef(new AssociationDefinitionModel("dm4.core.aggregation_def", USER_ACCOUNT_TYPE_URI,
                 PERSON_TYPE_URI, "dm4.core.one", "dm4.core.one"));
         } else {
-            logger.info("Sign-on Module => NOT Enriching \"User Account\"-Type about \"Person\"-Type - Already done!");
-        }
+            logger.info("Sign-on Migration1 => NOT Enriching \"User Account\"-Type about \"Person\"-Type - Already done!");
+        } **/
 
     }
 
