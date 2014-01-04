@@ -5,9 +5,7 @@ import java.util.logging.Logger;
 import de.deepamehta.core.service.Migration;
 import de.deepamehta.core.TopicType;
 import de.deepamehta.core.model.*;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 public class Migration1 extends Migration {
 
@@ -25,7 +23,7 @@ public class Migration1 extends Migration {
 		// 1) Create "OpenId"-Type
 		TopicTypeModel openIdModel = new TopicTypeModel(OPENID_CLAIMED_TYPE_URI ,"OpenID", "dm4.core.text");
 		TopicType openId = dms.createTopicType(openIdModel, null);
-		Set<IndexMode> indexModes = new HashSet<IndexMode>();
+		List<IndexMode> indexModes = new ArrayList<IndexMode>();
 		indexModes.add(IndexMode.KEY);
 		openId.setIndexModes(indexModes);
 

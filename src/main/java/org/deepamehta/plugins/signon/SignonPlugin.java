@@ -15,10 +15,15 @@ import de.deepamehta.core.util.JavaUtils;
 import de.deepamehta.plugins.accesscontrol.model.Credentials;
 import de.deepamehta.plugins.accesscontrol.service.AccessControlService;
 import de.deepamehta.plugins.webactivator.WebActivatorPlugin;
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.logging.Level;
 
@@ -59,9 +64,12 @@ public class SignonPlugin extends WebActivatorPlugin {
 
     private static final String ATTR_MAC = "openid_mac";
     private static final String ATTR_ALIAS = "openid_alias";
+    private static final String OPEN_ID_COOKIE = "dm4.signon.openid_cookie";
 
     private static final long ONE_HOUR = 3600000;
     private static final long TWO_HOURS = 7200000;
+
+    private HashMap nonces = null;
 
     @Context
     private HttpServletRequest request;
@@ -76,6 +84,8 @@ public class SignonPlugin extends WebActivatorPlugin {
         manager = new OpenIdManager();
         manager.setRealm("http://localhost:8080"); // change to your domain
         manager.setReturnTo("http://localhost:8080/sign-on/openid/response"); // change to your servlet url
+        //
+        nonces = new HashMap();
     }
 
     @GET
@@ -88,19 +98,18 @@ public class SignonPlugin extends WebActivatorPlugin {
         Association association = manager.lookupAssociation(endpoint);
         association.setMaxAge(TWO_HOURS); // after 2hrs a password prompt appears again
         //
-        if (request.getSession(false) == null) {
-            log.warning("There is no session which we could be using to transport our needs.. - CREATING one");
-        }
-        HttpSession session = request.getSession();
-        // Equip session with a shared secret
-        session.setAttribute(ATTR_MAC, association.getRawMacKey());
-        session.setAttribute(ATTR_ALIAS, endpoint.getAlias());
+        log.info("Google EP Ali  => " + endpoint.getAlias());
+        log.info("Google EP URL  => " + endpoint.getUrl());
+        log.info("Google AP Type => " + association.getAssociationType());
+        log.info("Google AP Hand => " + association.getAssociationHandle());
+        //
+        NewCookie newCookie = createClientSideCookie(endpoint, association);
         //
         String url = manager.getAuthenticationUrl(endpoint, association);
         URI location;
         try {
             location = new java.net.URI(url);
-            throw new WebApplicationException(Response.seeOther(location).build());
+            throw new WebApplicationException(Response.seeOther(location).cookie(newCookie).build());
         } catch (URISyntaxException ex) {
             Logger.getLogger(SignonPlugin.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -117,19 +126,18 @@ public class SignonPlugin extends WebActivatorPlugin {
         Association association = manager.lookupAssociation(endpoint);
         association.setMaxAge(TWO_HOURS); // after 2hrs a password prompt appears again
         //
-        if (request.getSession(false) == null) {
-            log.warning("There is no session which we could be using to transport our needs.. - CREATING one");
-        }
-        HttpSession session = request.getSession();
-        // Equip session with a shared secret
-        session.setAttribute(ATTR_MAC, association.getRawMacKey());
-        session.setAttribute(ATTR_ALIAS, endpoint.getAlias());
+        log.info("Yahoo EP Ali  => " + endpoint.getAlias());
+        log.info("Yahoo EP URL  => " + endpoint.getUrl());
+        log.info("Yahoo AP Type => " + association.getAssociationType());
+        log.info("Yahoo AP Hand => " + association.getAssociationHandle());
+        //
+        NewCookie newCookie = createClientSideCookie(endpoint, association);
         //
         String url = manager.getAuthenticationUrl(endpoint, association);
         URI location;
         try {
             location = new java.net.URI(url);
-            throw new WebApplicationException(Response.seeOther(location).build());
+            throw new WebApplicationException(Response.seeOther(location).cookie(newCookie).build());
         } catch (URISyntaxException ex) {
             Logger.getLogger(SignonPlugin.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -143,71 +151,113 @@ public class SignonPlugin extends WebActivatorPlugin {
     public Viewable processOpenAuthenticationResponse(@QueryParam("openid.response_nonce") String nonce,
             @QueryParam("openid.op_endpoint") String endpoint, @QueryParam("openid.claimed_id") String openId,
             @HeaderParam("Cookie") ClientState clientState) {
+        //
+        String cookie_body = clientState.get(OPEN_ID_COOKIE);
+        String[] values = cookie_body.split(":");
+        String alias = values[0].split(",")[1];
+        String encoded_key = values[1].split(",")[1];
+        log.info("DEBUG: " + cookie_body);
+        try {
+            byte[] decoded_key = Base64.decode(URLDecoder.decode(encoded_key, "UTF-8"));
+            log.info("DEBUG !CookieBody Alias => " + alias);
+            log.info("DEBUG !CookieBody Key After => " + encoded_key);
 
-        // 0.) Authenticate response
-        Authentication authentication = authenticateIncomingRequest(request, openId);
-        if (authentication == null) {
-            throw new WebApplicationException(new Throwable("Authentication unsuccessfull."), Status.UNAUTHORIZED);
-        }
-        // 1.) parse request based on endpoint value set by AP
-        String provider = "";
-        if (endpoint.indexOf("google") != -1) {
-            provider = "Google";
-        } else if (endpoint.indexOf("yahoo") != -1) {
-            provider = "Yahoo";
-        }
-        // 2.) check nonce (shall prevent "replay-attack")
-        checkNonce(nonce);
-        // 3.) try to relate response to an existing "user account"
-        Topic userAccount = getUserAccountByOpenId(openId, provider);
-        if (userAccount == null) {
-            String email = authentication.getEmail();
-            String new_username = email.substring(0, email.indexOf("@"));
-            // fixme: permissions should not be set correctly cause of (yet) missing client-state (resp. session)
-            Topic new_account = createUserAccountByOpenId(openId, new_username, email, authentication.getFirstname(),
-                    authentication.getLastname(), clientState);
-            viewData("title", "DeepaMehta Account Created");
-            viewData("message", "On behalf of your successfull request DeepaMehta created a new user account.");
-            viewData("username", new_account.getSimpleValue().toString());
-            viewData("openid", openId);
-        } else {
-            log.info("Sign-on Module => User Account already known, logging in => " + userAccount.getSimpleValue());
-            viewData("title", "Logged in via " + provider);
-            viewData("message", "");
-            createSession(userAccount.getSimpleValue().toString(), request);
-            log.info("##### Logging in via OpenID-Request => SUCCESSFUL!" +
-                "\n      ##### Could create a new session for " + userAccount.getSimpleValue().toString());
-            try {
-                URI location = new java.net.URI("http://localhost:8080/de.deepamehta.webclient");
-                throw new WebApplicationException(Response.seeOther(location).build());
-            } catch (URISyntaxException ex) {
-                log.info("Redirecting failed cause of malformed URI"); // doing nothing..
+            // 0.) Authenticate response
+            Authentication authentication = authenticateIncomingRequest(request, openId, decoded_key, alias);
+            if (authentication == null) {
+                throw new WebApplicationException(new Throwable("Authentication unsuccessfull."), Status.UNAUTHORIZED);
             }
+            log.info("Logged in successfull!");
+            // 1.) parse request based on endpoint value set by AP
+            String provider = "";
+            if (endpoint.indexOf("google") != -1) {
+                provider = "Google";
+            } else if (endpoint.indexOf("yahoo") != -1) {
+                provider = "Yahoo";
+            }
+            // 2.) check nonce (shall prevent "replay-attack")
+            checkNonce(nonce);
+            // 3.) try to relate response to an existing "user account"
+            Topic userAccount = getUserAccountByOpenId(openId, provider);
+            if (userAccount == null) {
+                // String email = authentication.getEmail();
+                // String new_username = email.substring(0, email.indexOf("@"));
+                // fixme: permissions should not be set correctly cause of (yet) missing client-state (resp. session)
+                // todo: do not create a "user account"-topic
+                // this triggers a session-data-inconsistency check too
+                // Topic new_account = createUserAccountByOpenId(openId, new_username, email, authentication.getFirstname(),
+                        // authentication.getLastname(), clientState);
+                createUserSession(authentication.getEmail(), request);
+                //
+                viewData("title", "DeepaMehta Account Created");
+                viewData("message", "On behalf of your successfull request DeepaMehta created a new user account.");
+                viewData("username", authentication.getEmail());
+                viewData("openid", openId);
+            } else {
+                log.info("Sign-on Module => User Account already known, logging in => " + authentication.getEmail());
+                viewData("title", "Logged in via " + provider);
+                viewData("message", "");
+                createUserSession(authentication.getEmail(), request);
+                log.info("##### Logging in via OpenID-Request => SUCCESSFUL!" +
+                    "\n      ##### Could create a new session for " + userAccount.getSimpleValue().toString());
+                try {
+                    URI location = new java.net.URI("http://localhost:8080/de.deepamehta.webclient");
+                    throw new WebApplicationException(Response.seeOther(location).build());
+                } catch (URISyntaxException ex) {
+                    log.info("Redirecting failed cause of malformed URI"); // doing nothing..
+                }
+            }
+            return getSignedOnView();
+        } catch (UnsupportedEncodingException ex) {
+            Logger.getLogger(SignonPlugin.class.getName()).log(Level.SEVERE, null, ex);
         }
-        return getSignedOnView();
-
+        return null;
     }
 
     /** --- private helpers --- */
 
-    private Authentication authenticateIncomingRequest(HttpServletRequest request, String openId) {
+    private Authentication authenticateIncomingRequest(HttpServletRequest request, String openId, byte[] mac_key,
+            String alias) {
         // authenticate incoming request
         log.info("Open-ID Authentication for " + openId);
-        byte[] mac_key = (byte[]) request.getSession().getAttribute(ATTR_MAC);
-        String alias = (String) request.getSession().getAttribute(ATTR_ALIAS);
+        // byte[] mac_key = (byte[]) request.getSession().getAttribute(ATTR_MAC);
+        // String alias = (String) request.getSession().getAttribute(ATTR_ALIAS);
+        if (mac_key == null) throw new RuntimeException("MA-Code .. is empty");
+        // so now we already have the incoming request at hand / and no session-data-inconsistency check was thrown
+        // let's create a session just for satisfying the implementation of the jopenid-lib
+        log.info("Creating a specific HttpSession with our Cookie data just for the satisfaction of jopenid ..");
+        HttpSession auth_sesssion = request.getSession(true);
+        auth_sesssion.setAttribute(ATTR_MAC, mac_key);
+        auth_sesssion.setAttribute(ATTR_ALIAS, alias);
+        // Checks if the returned "openid.sig" param equals all the "openid.signed"-params for given "mac_key"
         Authentication authentication = manager.getAuthentication(request, mac_key, alias);
         if (authentication == null) {
             log.info("Request authentication failed with \"" + alias + "\" key:\""+mac_key+"\"");
             log.info("##### Logging in via OpenID-Request => FAILED!");
+            auth_sesssion.invalidate();
             return authentication;
         }
         return authentication;
     }
 
-    private HttpSession createSession(String username, HttpServletRequest request) {
+    private HttpSession createUserSession(String username, HttpServletRequest request) {
         HttpSession session = request.getSession();
         session.setAttribute("username", username);
         return session;
+    }
+
+    private NewCookie createClientSideCookie(Endpoint endpoint, Association association) {
+        NewCookie newCookie;
+        try {
+            String mac_key = URLEncoder.encode(Base64.encodeBytes(association.getRawMacKey(), Base64.URL_SAFE), "UTF-8");
+            log.info("DEBUG !CookieBody Key Before => " + mac_key);
+            String cookie_body = "alias," + endpoint.getAlias().toString() + ":key," + mac_key;
+            Cookie cookie_mac = new Cookie(OPEN_ID_COOKIE, cookie_body);
+            newCookie = new NewCookie(cookie_mac, "", 7776000, false);
+            return newCookie;
+        } catch (UnsupportedEncodingException ux) {
+            throw new WebApplicationException(ux);
+        }
     }
 
     private void checkNonce(String nonce) {
@@ -223,12 +273,12 @@ public class SignonPlugin extends WebActivatorPlugin {
     }
 
     private boolean isNonceExist(String nonce) {
-        // TODO: check if nonce is exist in database:
-        return false;
+        // fixme: throw Exceptin if nonce is already expired
+        return nonces.containsKey(nonce);
     }
 
     private void storeNonce(String nonce, long expires) {
-        // TODO: store nonce in database:
+        nonces.put(nonce, expires);
     }
 
     private long getNonceTime(String nonce) {
