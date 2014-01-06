@@ -158,10 +158,10 @@ public class SignonPlugin extends WebActivatorPlugin {
         String encoded_key = values[1].split(",")[1];
         log.info("DEBUG: " + cookie_body);
         try {
-            byte[] decoded_key = Base64.decode(URLDecoder.decode(encoded_key, "UTF-8"));
-            log.info("DEBUG !CookieBody Alias => " + alias);
-            log.info("DEBUG !CookieBody Key After => " + encoded_key);
-
+            String unwrapped_key = URLDecoder.decode(encoded_key, "UTF-8");
+            log.info("DEBUG !CookieBody Unwrapped Key => " + unwrapped_key);
+            byte[] decoded_key = Base64.decode(unwrapped_key.getBytes(), 0, unwrapped_key.length(), Base64.URL_SAFE);
+            log.info("DEBUG !CookieBody EncodedKey After => " + encoded_key);
             // 0.) Authenticate response
             Authentication authentication = authenticateIncomingRequest(request, openId, decoded_key, alias);
             if (authentication == null) {
@@ -180,14 +180,11 @@ public class SignonPlugin extends WebActivatorPlugin {
             // 3.) try to relate response to an existing "user account"
             Topic userAccount = getUserAccountByOpenId(openId, provider);
             if (userAccount == null) {
-                // String email = authentication.getEmail();
-                // String new_username = email.substring(0, email.indexOf("@"));
-                // fixme: permissions should not be set correctly cause of (yet) missing client-state (resp. session)
-                // todo: do not create a "user account"-topic
-                // this triggers a session-data-inconsistency check too
-                // Topic new_account = createUserAccountByOpenId(openId, new_username, email, authentication.getFirstname(),
-                        // authentication.getLastname(), clientState);
-                createUserSession(authentication.getEmail(), request);
+                String email = authentication.getEmail();
+                String new_username = email.substring(0, email.indexOf("@"));
+                createUserSession(new_username, request);
+                createUserAccountByOpenId(openId, new_username, email, authentication.getFirstname(),
+                        authentication.getLastname(), clientState);
                 //
                 viewData("title", "DeepaMehta Account Created");
                 viewData("message", "On behalf of your successfull request DeepaMehta created a new user account.");
@@ -197,7 +194,9 @@ public class SignonPlugin extends WebActivatorPlugin {
                 log.info("Sign-on Module => User Account already known, logging in => " + authentication.getEmail());
                 viewData("title", "Logged in via " + provider);
                 viewData("message", "");
-                createUserSession(authentication.getEmail(), request);
+                String email = authentication.getEmail();
+                String new_username = email.substring(0, email.indexOf("@"));
+                createUserSession(new_username, request);
                 log.info("##### Logging in via OpenID-Request => SUCCESSFUL!" +
                     "\n      ##### Could create a new session for " + userAccount.getSimpleValue().toString());
                 try {
@@ -223,9 +222,7 @@ public class SignonPlugin extends WebActivatorPlugin {
         // byte[] mac_key = (byte[]) request.getSession().getAttribute(ATTR_MAC);
         // String alias = (String) request.getSession().getAttribute(ATTR_ALIAS);
         if (mac_key == null) throw new RuntimeException("MA-Code .. is empty");
-        // so now we already have the incoming request at hand / and no session-data-inconsistency check was thrown
         // let's create a session just for satisfying the implementation of the jopenid-lib
-        log.info("Creating a specific HttpSession with our Cookie data just for the satisfaction of jopenid ..");
         HttpSession auth_sesssion = request.getSession(true);
         auth_sesssion.setAttribute(ATTR_MAC, mac_key);
         auth_sesssion.setAttribute(ATTR_ALIAS, alias);
@@ -249,7 +246,9 @@ public class SignonPlugin extends WebActivatorPlugin {
     private NewCookie createClientSideCookie(Endpoint endpoint, Association association) {
         NewCookie newCookie;
         try {
-            String mac_key = URLEncoder.encode(Base64.encodeBytes(association.getRawMacKey(), Base64.URL_SAFE), "UTF-8");
+            String wrap_key = Base64.encodeBytes(association.getRawMacKey(), Base64.URL_SAFE);
+            // log.info("DEBUG !CookieBody Wrapped Key Before => " + wrap_key);
+            String mac_key = URLEncoder.encode(wrap_key, "UTF-8");
             log.info("DEBUG !CookieBody Key Before => " + mac_key);
             String cookie_body = "alias," + endpoint.getAlias().toString() + ":key," + mac_key;
             Cookie cookie_mac = new Cookie(OPEN_ID_COOKIE, cookie_body);
