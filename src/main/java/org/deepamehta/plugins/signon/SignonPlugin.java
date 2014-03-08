@@ -78,12 +78,15 @@ public class SignonPlugin extends WebActivatorPlugin {
 
     private AccessControlService acService;
 
+    private String MY_DOMAIN = "http://localhost:8080"; // todo: make configurable via a .properties file
+
+    @Override
     public void init() {
         initTemplateEngine();
 		//
         manager = new OpenIdManager();
-        manager.setRealm("http://localhost:8080"); // change to your domain
-        manager.setReturnTo("http://localhost:8080/sign-on/openid/response"); // change to your servlet url
+        manager.setRealm(MY_DOMAIN);
+        manager.setReturnTo(MY_DOMAIN + "/sign-on/openid/response");
         //
         nonces = new HashMap();
     }
@@ -98,10 +101,10 @@ public class SignonPlugin extends WebActivatorPlugin {
         Association association = manager.lookupAssociation(endpoint);
         association.setMaxAge(TWO_HOURS); // after 2hrs a password prompt appears again
         //
-        log.info("Google EP Ali  => " + endpoint.getAlias());
-        log.info("Google EP URL  => " + endpoint.getUrl());
-        log.info("Google AP Type => " + association.getAssociationType());
-        log.info("Google AP Hand => " + association.getAssociationHandle());
+        log.fine("Google EP Ali  => " + endpoint.getAlias());
+        log.fine("Google EP URL  => " + endpoint.getUrl());
+        log.fine("Google AP Type => " + association.getAssociationType());
+        log.fine("Google AP Hand => " + association.getAssociationHandle());
         //
         NewCookie newCookie = createClientSideCookie(endpoint, association);
         //
@@ -126,10 +129,10 @@ public class SignonPlugin extends WebActivatorPlugin {
         Association association = manager.lookupAssociation(endpoint);
         association.setMaxAge(TWO_HOURS); // after 2hrs a password prompt appears again
         //
-        log.info("Yahoo EP Ali  => " + endpoint.getAlias());
-        log.info("Yahoo EP URL  => " + endpoint.getUrl());
-        log.info("Yahoo AP Type => " + association.getAssociationType());
-        log.info("Yahoo AP Hand => " + association.getAssociationHandle());
+        log.fine("Yahoo EP Ali  => " + endpoint.getAlias());
+        log.fine("Yahoo EP URL  => " + endpoint.getUrl());
+        log.fine("Yahoo AP Type => " + association.getAssociationType());
+        log.fine("Yahoo AP Hand => " + association.getAssociationHandle());
         //
         NewCookie newCookie = createClientSideCookie(endpoint, association);
         //
@@ -156,18 +159,15 @@ public class SignonPlugin extends WebActivatorPlugin {
         String[] values = cookie_body.split(":");
         String alias = values[0].split(",")[1];
         String encoded_key = values[1].split(",")[1];
-        log.info("DEBUG: " + cookie_body);
+        log.fine("OpenID-Debug: " + cookie_body);
         try {
             String unwrapped_key = URLDecoder.decode(encoded_key, "UTF-8");
-            log.info("DEBUG !CookieBody Unwrapped Key => " + unwrapped_key);
             byte[] decoded_key = Base64.decode(unwrapped_key.getBytes(), 0, unwrapped_key.length(), Base64.URL_SAFE);
-            log.info("DEBUG !CookieBody EncodedKey After => " + encoded_key);
             // 0.) Authenticate response
             Authentication authentication = authenticateIncomingRequest(request, openId, decoded_key, alias);
             if (authentication == null) {
                 throw new WebApplicationException(new Throwable("Authentication unsuccessfull."), Status.UNAUTHORIZED);
             }
-            log.info("Logged in successfull!");
             // 1.) parse request based on endpoint value set by AP
             String provider = "";
             if (endpoint.indexOf("google") != -1) {
@@ -218,7 +218,6 @@ public class SignonPlugin extends WebActivatorPlugin {
     private Authentication authenticateIncomingRequest(HttpServletRequest request, String openId, byte[] mac_key,
             String alias) {
         // authenticate incoming request
-        log.info("Open-ID Authentication for " + openId);
         // byte[] mac_key = (byte[]) request.getSession().getAttribute(ATTR_MAC);
         // String alias = (String) request.getSession().getAttribute(ATTR_ALIAS);
         if (mac_key == null) throw new RuntimeException("MA-Code .. is empty");
