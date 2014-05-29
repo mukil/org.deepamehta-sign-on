@@ -1,7 +1,7 @@
 
 # org.deepamehta Sign-on Module
 
-A DeepaMehta 4 plugin adding a simple HTML-UI and a REST service for OpenID-Authentication and DeepaMehta 4 User Accounts.
+A DeepaMehta 4 plugin adding a simple HTML-UI and a REST service for OpenID-Authentication and DeepaMehta 4 User Accounts. Currently this plugin only supports authentication through an existing Google or a Yahoo account.
 
 It does so through extending the model of a DeepaMehta 4 "User Account" about an "OpenID" child type (of type Text).
 
